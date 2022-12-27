@@ -23,6 +23,7 @@
 		THREE.FrontSide
 		THREE.BackSide
 		THREE.DoubleSide
+		THREE.TwoPassDoubleSide
 		</code>
 		<p>
 		어느 측면(앞,뒤 혹은 둘 다)이 렌더링 될 지 정의합니다.
@@ -127,6 +128,12 @@
 		[page:Materials DecrementWrapStencilOp]는 현재 스텐실 값을 1 감소시킵니다. 만약 감소된 값이 0 아래로 내려가면 255로 설정됩니다.<br />
 		[page:Materials InvertStencilOp]는 현재 스텐실 값의 비트값 반전을 수행합니다.<br />
 		</p>
+
+		<h2>GLSL Version</h2>
+		<code>
+		THREE.GLSL1
+		THREE.GLSL3
+		</code>
 
 		<h2>소스 코드</h2>
 

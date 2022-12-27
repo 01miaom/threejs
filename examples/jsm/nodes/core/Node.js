@@ -1,5 +1,5 @@
 import { NodeUpdateType } from './constants.js';
-import { getNodesKeys } from './NodeUtils.js';
+import { getNodesKeys, getCacheKey } from './NodeUtils.js';
 import { MathUtils } from 'three';
 
 let _nodeId = 0;
@@ -12,7 +12,7 @@ class Node {
 
 		this.nodeType = nodeType;
 
-		this.updateType = NodeUpdateType.None;
+		this.updateType = NodeUpdateType.NONE;
 
 		this.uuid = MathUtils.generateUUID();
 
@@ -23,6 +23,12 @@ class Node {
 	get type() {
 
 		return this.constructor.name;
+
+	}
+
+	isGlobal( /*builder*/ ) {
+
+		return false;
 
 	}
 
@@ -38,7 +44,7 @@ class Node {
 
 				for ( const child of object ) {
 
-					if ( child?.isNode === true ) {
+					if ( child && child.isNode === true ) {
 
 						children.push( child );
 
@@ -46,15 +52,35 @@ class Node {
 
 				}
 
-			} else if ( object?.isNode === true ) {
+			} else if ( object && object.isNode === true ) {
 
 				children.push( object );
+
+			} else if ( typeof object === 'object' ) {
+
+				for ( const property in object ) {
+
+					const child = object[ property ];
+
+					if ( child && child.isNode === true ) {
+
+						children.push( child );
+
+					}
+
+				}
 
 			}
 
 		}
 
 		return children;
+
+	}
+
+	getCacheKey() {
+
+		return getCacheKey( this );
 
 	}
 
@@ -73,12 +99,6 @@ class Node {
 	getNodeType( /*builder*/ ) {
 
 		return this.nodeType;
-
-	}
-
-	getConstructHash( /*builder*/ ) {
-
-		return this.uuid;
 
 	}
 
@@ -119,7 +139,7 @@ class Node {
 
 			for ( const childNode of Object.values( nodeProperties ) ) {
 
-				if ( childNode?.isNode === true ) {
+				if ( childNode && childNode.isNode === true ) {
 
 					childNode.build( builder );
 
@@ -135,7 +155,7 @@ class Node {
 
 		const { outputNode } = builder.getNodeProperties( this );
 
-		if ( outputNode?.isNode === true ) {
+		if ( outputNode && outputNode.isNode === true ) {
 
 			return outputNode.build( builder, output );
 
@@ -182,7 +202,7 @@ class Node {
 
 				for ( const childNode of Object.values( properties ) ) {
 
-					if ( childNode?.isNode === true ) {
+					if ( childNode && childNode.isNode === true ) {
 
 						childNode.build( builder );
 

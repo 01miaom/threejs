@@ -28,7 +28,7 @@
 <p>设置运行alphaTest时要使用的alpha值。如果不透明度低于此值，则不会渲染材质。默认值为*0*。
 </p>
 
-<h3>[property:Float alphaToCoverage]</h3>
+<h3>[property:Boolean alphaToCoverage]</h3>
 <p>
 启用alpha to coverage. 只能在开启了MSAA的渲染环境中使用 (当渲染器创建的时候*antialias* 属性要*true*才能使用).
 默认为 *false*.
@@ -226,7 +226,7 @@
 
 <h3>[property:Integer side]</h3>
 <p> 定义将要渲染哪一面 - 正面，背面或两者。
-	默认为[page:Materials THREE.FrontSide]。其他选项有[page:Materials THREE.BackSide]和[page:Materials THREE.DoubleSide]。
+	默认为[page:Materials THREE.FrontSide]。其他选项有[page:Materials THREE.BackSide], [page:Materials THREE.DoubleSide] 和 [page:Materials THREE.TwoPassDoubleSide]。
 </p>
 
 <h3>[property:Boolean toneMapped]</h3>

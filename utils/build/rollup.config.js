@@ -1,6 +1,4 @@
-import babel from '@rollup/plugin-babel';
 import { terser } from 'rollup-plugin-terser';
-import babelrc from './.babelrc.json';
 
 export function glconstants() {
 
@@ -113,6 +111,7 @@ export function glconstants() {
 		UNSIGNED_INT_24_8: 34042,
 		TEXTURE_CUBE_MAP: 34067,
 		TEXTURE_CUBE_MAP_POSITIVE_X: 34069,
+		TEXTURE_CUBE_MAP_NEGATIVE_Z: 34074,
 		MAX_CUBE_MAP_TEXTURE_SIZE: 34076,
 		COMPRESSED_TEXTURE_FORMATS: 34467,
 		RGBA32F: 34836,
@@ -122,6 +121,7 @@ export function glconstants() {
 		MAX_VERTEX_ATTRIBS: 34921,
 		MAX_TEXTURE_IMAGE_UNITS: 34930,
 		ARRAY_BUFFER: 34962,
+		UNIFORM_BUFFER: 35345,
 		ELEMENT_ARRAY_BUFFER: 34963,
 		STATIC_DRAW: 35044,
 		DYNAMIC_DRAW: 35048,
@@ -164,7 +164,8 @@ export function glconstants() {
 		DRAW_FRAMEBUFFER: 36009,
 		SAMPLE_ALPHA_TO_COVERAGE: 32926,
 		SRGB8: 35905,
-		SRGB8_ALPHA8: 35907
+		SRGB8_ALPHA8: 35907,
+		MAX_UNIFORM_BUFFER_BINDINGS: 35375
 	};
 
 	return {
@@ -243,27 +244,6 @@ export function glsl() {
 
 }
 
-function babelCleanup() {
-
-	const doubleSpaces = / {2}/g;
-
-	return {
-
-		transform( code ) {
-
-			code = code.replace( doubleSpaces, '\t' );
-
-			return {
-				code: code,
-				map: null
-			};
-
-		}
-
-	};
-
-}
-
 function header() {
 
 	return {
@@ -283,7 +263,7 @@ ${ code }`;
 
 }
 
-let builds = [
+const builds = [
 	{
 		input: 'src/Three.js',
 		plugins: [
@@ -304,13 +284,6 @@ let builds = [
 		plugins: [
 			addons(),
 			glsl(),
-			babel( {
-				babelHelpers: 'bundled',
-				compact: false,
-				babelrc: false,
-				...babelrc
-			} ),
-			babelCleanup(),
 			header()
 		],
 		output: [
@@ -334,12 +307,6 @@ let builds = [
 			addons(),
 			glconstants(),
 			glsl(),
-			babel( {
-				babelHelpers: 'bundled',
-				babelrc: false,
-				...babelrc
-			} ),
-			babelCleanup(),
 			terser(),
 			header()
 		],
@@ -353,11 +320,4 @@ let builds = [
 	}
 ];
 
-
-if ( process.env.ONLY_MODULE === 'true' ) {
-
-	builds = builds[ 0 ];
-
-}
-
-export default builds;
+export default ( args ) => args.configOnlyModule ? builds[ 0 ] : builds;

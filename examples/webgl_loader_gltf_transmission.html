@@ -21,7 +21,8 @@
 		<script type="importmap">
 			{
 				"imports": {
-					"three": "../build/three.module.js"
+					"three": "../build/three.module.js",
+					"three/addons/": "./jsm/"
 				}
 			}
 		</script>
@@ -30,11 +31,11 @@
 
 			import * as THREE from 'three';
 
-			import { OrbitControls } from './jsm/controls/OrbitControls.js';
-			import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
-			import { RGBELoader } from './jsm/loaders/RGBELoader.js';
+			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+			import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
-			import { DRACOLoader } from './jsm/loaders/DRACOLoader.js';
+			import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 			let camera, scene, renderer, controls, clock, mixer;
 
@@ -66,7 +67,7 @@
 
 						new GLTFLoader()
 							.setPath( 'models/gltf/' )
-							.setDRACOLoader( new DRACOLoader().setDecoderPath( 'js/libs/draco/gltf/' ) )
+							.setDRACOLoader( new DRACOLoader().setDecoderPath( 'jsm/libs/draco/gltf/' ) )
 							.load( 'IridescentDishWithOlives.glb', function ( gltf ) {
 
 								mixer = new THREE.AnimationMixer( gltf.scene );

@@ -4,11 +4,6 @@ import { abs, fract, round, sin, add, sub, mul } from '../shadernode/ShaderNodeB
 
 class OscNode extends Node {
 
-	static SINE = 'sine';
-	static SQUARE = 'square';
-	static TRIANGLE = 'triangle';
-	static SAWTOOTH = 'sawtooth';
-
 	constructor( method = OscNode.SINE, timeNode = new TimerNode() ) {
 
 		super();
@@ -24,7 +19,7 @@ class OscNode extends Node {
 
 	}
 
-	generate( builder ) {
+	construct() {
 
 		const method = this.method;
 		const timeNode = this.timeNode;
@@ -49,7 +44,7 @@ class OscNode extends Node {
 
 		}
 
-		return outputNode.build( builder );
+		return outputNode;
 
 	}
 
@@ -70,5 +65,10 @@ class OscNode extends Node {
 	}
 
 }
+
+OscNode.SINE = 'sine';
+OscNode.SQUARE = 'square';
+OscNode.TRIANGLE = 'triangle';
+OscNode.SAWTOOTH = 'sawtooth';
 
 export default OscNode;

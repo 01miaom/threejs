@@ -1483,6 +1483,12 @@ class FBXTreeParser {
 // parse Geometry data from FBXTree and return map of BufferGeometries
 class GeometryParser {
 
+	constructor() {
+
+		this.negativeMaterialIndices = false;
+
+	}
+
 	// Parse nodes in FBXTree.Objects.Geometry
 	parse( deformers ) {
 
@@ -1500,6 +1506,14 @@ class GeometryParser {
 				geometryMap.set( parseInt( nodeID ), geo );
 
 			}
+
+		}
+
+		// report warnings
+
+		if ( this.negativeMaterialIndices === true ) {
+
+			console.warn( 'THREE.FBXLoader: The FBX file contains invalid (negative) material indices. The asset might not render as expected.' );
 
 		}
 
@@ -1897,6 +1911,13 @@ class GeometryParser {
 
 				materialIndex = getData( polygonVertexIndex, polygonIndex, vertexIndex, geoInfo.material )[ 0 ];
 
+				if ( materialIndex < 0 ) {
+
+					scope.negativeMaterialIndices = true;
+					materialIndex = 0; // fallback
+
+				}
+
 			}
 
 			if ( geoInfo.uv ) {
@@ -1921,6 +1942,8 @@ class GeometryParser {
 			faceLength ++;
 
 			if ( endOfFace ) {
+
+				if ( faceLength > 4 ) console.warn( 'THREE.FBXLoader: Polygons with more than four sides are not supported. Make sure to triangulate the geometry during export.' );
 
 				scope.genFace( buffers, geoInfo, facePositionIndexes, materialIndex, faceNormals, faceColors, faceUVs, faceWeights, faceWeightIndices, faceLength );
 
@@ -2247,13 +2270,6 @@ class GeometryParser {
 
 	// Generate a NurbGeometry from a node in FBXTree.Objects.Geometry
 	parseNurbsGeometry( geoNode ) {
-
-		if ( NURBSCurve === undefined ) {
-
-			console.error( 'THREE.FBXLoader: The loader relies on NURBSCurve for any nurbs present in the model. Nurbs will show up as empty geometry.' );
-			return new BufferGeometry();
-
-		}
 
 		const order = parseInt( geoNode.Order );
 
@@ -3535,13 +3551,7 @@ class BinaryParser {
 
 				}
 
-				if ( typeof fflate === 'undefined' ) {
-
-					console.error( 'THREE.FBXLoader: External library fflate.min.js required.' );
-
-				}
-
-				const data = fflate.unzlibSync( new Uint8Array( reader.getArrayBuffer( compressedLength ) ) ); // eslint-disable-line no-undef
+				const data = fflate.unzlibSync( new Uint8Array( reader.getArrayBuffer( compressedLength ) ) );
 				const reader2 = new BinaryReader( data.buffer );
 
 				switch ( type ) {
@@ -3958,7 +3968,7 @@ function generateTransform( transformData ) {
 	if ( transformData.preRotation ) {
 
 		const array = transformData.preRotation.map( MathUtils.degToRad );
-		array.push( transformData.eulerOrder );
+		array.push( transformData.eulerOrder || Euler.DEFAULT_ORDER );
 		lPreRotationM.makeRotationFromEuler( tempEuler.fromArray( array ) );
 
 	}
@@ -3966,7 +3976,7 @@ function generateTransform( transformData ) {
 	if ( transformData.rotation ) {
 
 		const array = transformData.rotation.map( MathUtils.degToRad );
-		array.push( transformData.eulerOrder );
+		array.push( transformData.eulerOrder || Euler.DEFAULT_ORDER );
 		lRotationM.makeRotationFromEuler( tempEuler.fromArray( array ) );
 
 	}
@@ -3974,7 +3984,7 @@ function generateTransform( transformData ) {
 	if ( transformData.postRotation ) {
 
 		const array = transformData.postRotation.map( MathUtils.degToRad );
-		array.push( transformData.eulerOrder );
+		array.push( transformData.eulerOrder || Euler.DEFAULT_ORDER );
 		lPostRotationM.makeRotationFromEuler( tempEuler.fromArray( array ) );
 		lPostRotationM.invert();
 

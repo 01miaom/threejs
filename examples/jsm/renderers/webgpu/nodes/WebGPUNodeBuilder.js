@@ -10,12 +10,7 @@ import WebGPUUniformBuffer from '../WebGPUUniformBuffer.js';
 import WebGPUStorageBuffer from '../WebGPUStorageBuffer.js';
 import { getVectorLength, getStrideLength } from '../WebGPUBufferUtils.js';
 
-import NodeBuilder from 'three-nodes/core/NodeBuilder.js';
-import WGSLNodeParser from 'three-nodes/parsers/WGSLNodeParser.js';
-
-import CodeNode from 'three-nodes/core/CodeNode.js';
-
-import { NodeMaterial } from 'three-nodes/materials/Materials.js';
+import { NodeBuilder, WGSLNodeParser, CodeNode, NodeMaterial } from 'three/nodes';
 
 const gpuShaderStageLib = {
 	'vertex': GPUShaderStage.VERTEX,
@@ -32,6 +27,7 @@ const wgslTypeLib = {
 	int: 'i32',
 	uint: 'u32',
 	bool: 'bool',
+	color: 'vec3<f32>',
 
 	vec2: 'vec2<f32>',
 	ivec2: 'vec2<i32>',
@@ -62,28 +58,30 @@ const wgslTypeLib = {
 const wgslMethods = {
 	dFdx: 'dpdx',
 	dFdy: 'dpdy',
+	mod: 'threejs_mod',
+	lessThanEqual: 'threejs_lessThanEqual',
 	inversesqrt: 'inverseSqrt'
 };
 
 const wgslPolyfill = {
 	lessThanEqual: new CodeNode( `
-fn lessThanEqual( a : vec3<f32>, b : vec3<f32> ) -> vec3<bool> {
+fn threejs_lessThanEqual( a : vec3<f32>, b : vec3<f32> ) -> vec3<bool> {
 
 	return vec3<bool>( a.x <= b.x, a.y <= b.y, a.z <= b.z );
 
 }
 ` ),
 	mod: new CodeNode( `
-fn mod( x : f32, y : f32 ) -> f32 {
+fn threejs_mod( x : f32, y : f32 ) -> f32 {
 
 	return x - y * floor( x / y );
 
 }
 ` ),
 	repeatWrapping: new CodeNode( `
-fn repeatWrapping( uv : vec2<f32>, dimension : vec2<i32> ) -> vec2<i32> {
+fn threejs_repeatWrapping( uv : vec2<f32>, dimension : vec2<u32> ) -> vec2<u32> {
 
-	let uvScaled = vec2<i32>( uv * vec2<f32>( dimension ) );
+	let uvScaled = vec2<u32>( uv * vec2<f32>( dimension ) );
 
 	return ( ( uvScaled % dimension ) + dimension ) % dimension;
 
@@ -129,18 +127,6 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 	}
 
-	addFlowCode( code ) {
-
-		if ( ! /;\s*$/.test( code ) ) {
-
-			code += ';';
-
-		}
-
-		super.addFlowCode( code + '\n\t' );
-
-	}
-
 	getSampler( textureProperty, uvSnippet, shaderStage = this.shaderStage ) {
 
 		if ( shaderStage === 'fragment' ) {
@@ -153,7 +139,7 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 			const dimension = `textureDimensions( ${textureProperty}, 0 )`;
 
-			return `textureLoad( ${textureProperty}, repeatWrapping( ${uvSnippet}, ${dimension} ), 0 )`;
+			return `textureLoad( ${textureProperty}, threejs_repeatWrapping( ${uvSnippet}, ${dimension} ), 0 )`;
 
 		}
 
@@ -171,7 +157,7 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 			const dimension = `textureDimensions( ${textureProperty}, 0 )`;
 
-			return `textureLoad( ${textureProperty}, repeatWrapping( ${uvSnippet}, ${dimension} ), i32( ${biasSnippet} ) )`;
+			return `textureLoad( ${textureProperty}, threejs_repeatWrapping( ${uvSnippet}, ${dimension} ), i32( ${biasSnippet} ) )`;
 
 		}
 
@@ -203,11 +189,11 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 	getPropertyName( node, shaderStage = this.shaderStage ) {
 
-		if ( node.isNodeVary === true ) {
+		if ( node.isNodeVarying === true && node.needsInterpolation === true ) {
 
 			if ( shaderStage === 'vertex' ) {
 
-				return `NodeVarys.${ node.name }`;
+				return `NodeVaryings.${ node.name }`;
 
 			}
 
@@ -402,6 +388,18 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 	}
 
+	getFragCoord() {
+
+		return this.getBuiltin( 'position', 'fragCoord', 'vec4<f32>', 'fragment' );
+
+	}
+
+	isFlipY() {
+
+		return false;
+
+	}
+
 	getAttributes( shaderStage ) {
 
 		const snippets = [];
@@ -457,7 +455,7 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 	}
 
-	getVarys( shaderStage ) {
+	getVaryings( shaderStage ) {
 
 		const snippets = [];
 
@@ -465,25 +463,43 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 			this.getBuiltin( 'position', 'Vertex', 'vec4<f32>', 'vertex' );
 
-			const varys = this.varys;
+			const varyings = this.varyings;
+			const vars = this.vars[ shaderStage ];
 
-			for ( let index = 0; index < varys.length; index ++ ) {
+			for ( let index = 0; index < varyings.length; index ++ ) {
 
-				const vary = varys[ index ];
+				const varying = varyings[ index ];
 
-				snippets.push( `@location( ${index} ) ${ vary.name } : ${ this.getType( vary.type ) }` );
+				if ( varying.needsInterpolation ) {
+
+					snippets.push( `@location( ${index} ) ${ varying.name } : ${ this.getType( varying.type ) }` );
+
+				} else if ( vars.includes( varying ) === false ) {
+
+					vars.push( varying );
+
+				}
 
 			}
 
 		} else if ( shaderStage === 'fragment' ) {
 
-			const varys = this.varys;
+			const varyings = this.varyings;
+			const vars = this.vars[ shaderStage ];
 
-			for ( let index = 0; index < varys.length; index ++ ) {
+			for ( let index = 0; index < varyings.length; index ++ ) {
 
-				const vary = varys[ index ];
+				const varying = varyings[ index ];
 
-				snippets.push( `@location( ${index} ) ${ vary.name } : ${ this.getType( vary.type ) }` );
+				if ( varying.needsInterpolation ) {
+
+					snippets.push( `@location( ${index} ) ${ varying.name } : ${ this.getType( varying.type ) }` );
+
+				} else if ( vars.includes( varying ) === false ) {
+
+					vars.push( varying );
+
+				}
 
 			}
 
@@ -497,7 +513,7 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 		const code = snippets.join( ',\n\t' );
 
-		return shaderStage === 'vertex' ? this._getWGSLStruct( 'NodeVarysStruct', '\t' + code ) : code;
+		return shaderStage === 'vertex' ? this._getWGSLStruct( 'NodeVaryingsStruct', '\t' + code ) : code;
 
 	}
 
@@ -612,7 +628,7 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 					if ( shaderStage === 'vertex' ) {
 
-						flow += 'NodeVarys.Vertex = ';
+						flow += 'NodeVaryings.Vertex = ';
 
 					} else if ( shaderStage === 'fragment' ) {
 
@@ -630,7 +646,7 @@ class WebGPUNodeBuilder extends NodeBuilder {
 
 			stageData.uniforms = this.getUniforms( shaderStage );
 			stageData.attributes = this.getAttributes( shaderStage );
-			stageData.varys = this.getVarys( shaderStage );
+			stageData.varyings = this.getVaryings( shaderStage );
 			stageData.vars = this.getVars( shaderStage );
 			stageData.codes = this.getCodes( shaderStage );
 			stageData.flow = flow;
@@ -701,17 +717,17 @@ class WebGPUNodeBuilder extends NodeBuilder {
 // uniforms
 ${shaderData.uniforms}
 
-// varys
-${shaderData.varys}
+// varyings
+${shaderData.varyings}
 
 // codes
 ${shaderData.codes}
 
 @vertex
-fn main( ${shaderData.attributes} ) -> NodeVarysStruct {
+fn main( ${shaderData.attributes} ) -> NodeVaryingsStruct {
 
 	// system
-	var NodeVarys: NodeVarysStruct;
+	var NodeVaryings: NodeVaryingsStruct;
 
 	// vars
 	${shaderData.vars}
@@ -719,7 +735,7 @@ fn main( ${shaderData.attributes} ) -> NodeVarysStruct {
 	// flow
 	${shaderData.flow}
 
-	return NodeVarys;
+	return NodeVaryings;
 
 }
 `;
@@ -737,7 +753,7 @@ ${shaderData.uniforms}
 ${shaderData.codes}
 
 @fragment
-fn main( ${shaderData.varys} ) -> @location( 0 ) vec4<f32> {
+fn main( ${shaderData.varyings} ) -> @location( 0 ) vec4<f32> {
 
 	// vars
 	${shaderData.vars}

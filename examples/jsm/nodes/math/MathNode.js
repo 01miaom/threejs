@@ -1,62 +1,9 @@
 import TempNode from '../core/TempNode.js';
 import ExpressionNode from '../core/ExpressionNode.js';
-import JoinNode from '../utils/JoinNode.js';
 import SplitNode from '../utils/SplitNode.js';
 import OperatorNode from './OperatorNode.js';
 
 class MathNode extends TempNode {
-
-	// 1 input
-
-	static RADIANS = 'radians';
-	static DEGREES = 'degrees';
-	static EXP = 'exp';
-	static EXP2 = 'exp2';
-	static LOG = 'log';
-	static LOG2 = 'log2';
-	static SQRT = 'sqrt';
-	static INVERSE_SQRT = 'inversesqrt';
-	static FLOOR = 'floor';
-	static CEIL = 'ceil';
-	static NORMALIZE = 'normalize';
-	static FRACT = 'fract';
-	static SIN = 'sin';
-	static COS = 'cos';
-	static TAN = 'tan';
-	static ASIN = 'asin';
-	static ACOS = 'acos';
-	static ATAN = 'atan';
-	static ABS = 'abs';
-	static SIGN = 'sign';
-	static LENGTH = 'length';
-	static NEGATE = 'negate';
-	static INVERT = 'invert';
-	static DFDX = 'dFdx';
-	static DFDY = 'dFdy';
-	static SATURATE = 'saturate';
-	static ROUND = 'round';
-
-	// 2 inputs
-
-	static ATAN2 = 'atan2';
-	static MIN = 'min';
-	static MAX = 'max';
-	static MOD = 'mod';
-	static STEP = 'step';
-	static REFLECT = 'reflect';
-	static DISTANCE = 'distance';
-	static DOT = 'dot';
-	static CROSS = 'cross';
-	static POW = 'pow';
-	static TRANSFORM_DIRECTION = 'transformDirection';
-
-	// 3 inputs
-
-	static MIX = 'mix';
-	static CLAMP = 'clamp';
-	static REFRACT = 'refract';
-	static SMOOTHSTEP = 'smoothstep';
-	static FACEFORWARD = 'faceforward';
 
 	constructor( method, aNode, bNode = null, cNode = null ) {
 
@@ -131,17 +78,7 @@ class MathNode extends TempNode {
 
 		const isWebGL = builder.renderer.isWebGLRenderer === true;
 
-		if ( isWebGL && ( method === MathNode.DFDX || method === MathNode.DFDY ) && output === 'vec3' ) {
-
-			// Workaround for Adreno 3XX dFd*( vec3 ) bug. See #9988
-
-			return new JoinNode( [
-				new MathNode( method, new SplitNode( a, 'x' ) ),
-				new MathNode( method, new SplitNode( a, 'y' ) ),
-				new MathNode( method, new SplitNode( a, 'z' ) )
-			] ).build( builder );
-
-		} else if ( method === MathNode.TRANSFORM_DIRECTION ) {
+		if ( method === MathNode.TRANSFORM_DIRECTION ) {
 
 			// dir can be either a direction vector or a normal vector
 			// upper-left 3x3 of matrix is assumed to be orthogonal
@@ -163,10 +100,6 @@ class MathNode extends TempNode {
 
 			return new MathNode( MathNode.NORMALIZE, mulNode ).build( builder );
 
-		} else if ( method === MathNode.SATURATE ) {
-
-			return builder.format( `clamp( ${ a.build( builder, inputType ) }, 0.0, 1.0 )`, type, output );
-
 		} else if ( method === MathNode.NEGATE ) {
 
 			return builder.format( '( -' + a.build( builder, inputType ) + ' )', type, output );
@@ -174,6 +107,10 @@ class MathNode extends TempNode {
 		} else if ( method === MathNode.INVERT ) {
 
 			return builder.format( '( 1.0 - ' + a.build( builder, inputType ) + ' )', type, output );
+
+		} else if ( method === MathNode.RECIPROCAL ) {
+
+			return builder.format( '( 1.0 / ' + a.build( builder, inputType ) + ' )', type, output );
 
 		} else {
 
@@ -255,5 +192,57 @@ class MathNode extends TempNode {
 	}
 
 }
+
+// 1 input
+
+MathNode.RADIANS = 'radians';
+MathNode.DEGREES = 'degrees';
+MathNode.EXP = 'exp';
+MathNode.EXP2 = 'exp2';
+MathNode.LOG = 'log';
+MathNode.LOG2 = 'log2';
+MathNode.SQRT = 'sqrt';
+MathNode.INVERSE_SQRT = 'inversesqrt';
+MathNode.FLOOR = 'floor';
+MathNode.CEIL = 'ceil';
+MathNode.NORMALIZE = 'normalize';
+MathNode.FRACT = 'fract';
+MathNode.SIN = 'sin';
+MathNode.COS = 'cos';
+MathNode.TAN = 'tan';
+MathNode.ASIN = 'asin';
+MathNode.ACOS = 'acos';
+MathNode.ATAN = 'atan';
+MathNode.ABS = 'abs';
+MathNode.SIGN = 'sign';
+MathNode.LENGTH = 'length';
+MathNode.NEGATE = 'negate';
+MathNode.INVERT = 'invert';
+MathNode.DFDX = 'dFdx';
+MathNode.DFDY = 'dFdy';
+MathNode.ROUND = 'round';
+MathNode.RECIPROCAL = 'reciprocal';
+
+// 2 inputs
+
+MathNode.ATAN2 = 'atan2';
+MathNode.MIN = 'min';
+MathNode.MAX = 'max';
+MathNode.MOD = 'mod';
+MathNode.STEP = 'step';
+MathNode.REFLECT = 'reflect';
+MathNode.DISTANCE = 'distance';
+MathNode.DOT = 'dot';
+MathNode.CROSS = 'cross';
+MathNode.POW = 'pow';
+MathNode.TRANSFORM_DIRECTION = 'transformDirection';
+
+// 3 inputs
+
+MathNode.MIX = 'mix';
+MathNode.CLAMP = 'clamp';
+MathNode.REFRACT = 'refract';
+MathNode.SMOOTHSTEP = 'smoothstep';
+MathNode.FACEFORWARD = 'faceforward';
 
 export default MathNode;

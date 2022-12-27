@@ -3,9 +3,9 @@ import BRDF_GGX from './BSDF/BRDF_GGX.js';
 import DFGApprox from './BSDF/DFGApprox.js';
 import {
 	ShaderNode,
-	vec3, mul, saturate, add, sub, dot, div, transformedNormalView,
+	vec3, mul, clamp, add, sub, dot, div, transformedNormalView,
 	pow, exp2, dotNV,
-	diffuseColor, specularColor, roughness, temp
+	diffuseColor, specularColor, roughness, temp, lightingModel
 } from '../shadernode/ShaderNodeElements.js';
 
 // Fdez-Agüera's "Multiple-Scattering Microfacet Model for Real-Time Image Based Lighting"
@@ -61,7 +61,7 @@ const RE_Direct_Physical = new ShaderNode( ( inputs ) => {
 
 	const { lightDirection, lightColor, reflectedLight } = inputs;
 
-	const dotNL = saturate( dot( transformedNormalView, lightDirection ) );
+	const dotNL = clamp( dot( transformedNormalView, lightDirection ) );
 	const irradiance = mul( dotNL, lightColor );
 
 	reflectedLight.directDiffuse.add( mul( irradiance, BRDF_Lambert.call( { diffuseColor: diffuseColor.rgb } ) ) );
@@ -75,7 +75,7 @@ const RE_AmbientOcclusion_Physical = new ShaderNode( ( { ambientOcclusion, refle
 	const aoNV = add( dotNV, ambientOcclusion );
 	const aoExp = exp2( sub( mul( - 16.0, roughness ), 1.0 ) );
 
-	const aoNode = saturate( add( sub( pow( aoNV, aoExp ), 1.0 ), ambientOcclusion ) );
+	const aoNode = clamp( add( sub( pow( aoNV, aoExp ), 1.0 ), ambientOcclusion ) );
 
 	reflectedLight.indirectDiffuse.mul( ambientOcclusion );
 
@@ -84,11 +84,6 @@ const RE_AmbientOcclusion_Physical = new ShaderNode( ( { ambientOcclusion, refle
 
 } );
 
-const PhysicalLightingModel = {
-	direct: RE_Direct_Physical,
-	indirectDiffuse: RE_IndirectDiffuse_Physical,
-	indirectSpecular: RE_IndirectSpecular_Physical,
-	ambientOcclusion: RE_AmbientOcclusion_Physical
-};
+const physicalLightingModel = lightingModel( RE_Direct_Physical, RE_IndirectDiffuse_Physical, RE_IndirectSpecular_Physical, RE_AmbientOcclusion_Physical );
 
-export default PhysicalLightingModel;
+export default physicalLightingModel;
